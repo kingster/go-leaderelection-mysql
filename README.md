@@ -32,7 +32,7 @@ import (
 	"fmt"
 	"time"
 
-	leaderelection "github.com/your_github_username/go-leaderelection-mysql" // Replace with your actual module path
+	leaderelection "github.com/kingster/go-leaderelection-mysql" // Replace with your actual module path
 )
 
 func main() {
@@ -68,6 +68,23 @@ func main() {
 4.  **Lease Renewal**: The leading instance periodically calls `Campaign` (every 15 seconds in `ElectLeader`) to renew its lease by updating the `last_update` timestamp.
 5.  **Leadership Loss**: If a candidate fails to acquire or renew the lease (e.g., another instance became the leader or renewed its lease), it enters a waiting state (60 seconds in `ElectLeader`) before retrying. If it was previously the leader, the `loseLeadership` callback is invoked.
 6.  **Callbacks**: The `becomeLeaderCb` is called when an instance successfully acquires leadership. The `looseLeadershipCB` is called when a leading instance fails to renew its lease.
+
+### State Diagram
+
+The following diagram illustrates the lifecycle of a service instance in relation to leader election:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Candidate: Start Instance
+
+    Candidate --> Leader: Campaign() succeeds & IsLeader() verifies<br>(becomeLeaderCb called)
+    Candidate --> Candidate: Campaign() fails<br>(Wait 60s)
+    Candidate --> Candidate: Campaign() succeeds but IsLeader() fails<br>(Retry immediately)
+
+    Leader --> Leader: Campaign() succeeds<br>(Renew lease every 15s)
+    Leader --> Candidate: Campaign() fails<br>(looseLeadershipCB called)<br>(Wait 60s)
+    Leader --> Candidate: Instance Crash / Network Partition<br>(Lease expires after 60s)
+```
 
 ## Dependencies
 
